@@ -1,7 +1,46 @@
 >**NOTE:** This is a [BlueOS Extension](https://blueos.cloud/docs/blueos/1.1/extensions/) for using the [Tailscale](https://tailscale.com/) service on a BlueOS device. It sets up a VPN to access your device from anywhere with an internet connection.
+## Installation
+
+Until this extension is in the BlueOS Extensions store, install it manually:
+
+1. In BlueOS, open **Extensions** (enable Pirate Mode if the menu isn't visible) and go to the **Installed** tab
+1. Click the **+** button to add a custom extension and fill in:
+
+    | Field | Value |
+    |---|---|
+    | Extension Identifier | `vshie.tailscale` |
+    | Extension Name | `Tailscale` |
+    | Docker image | `vshie/blueos-tailscale` |
+    | Docker tag | `main` |
+
+1. Paste the following into **Custom settings** (permissions):
+
+    ```json
+    {
+      "NetworkMode": "host",
+      "HostConfig": {
+        "Privileged": true,
+        "NetworkMode": "host",
+        "CapAdd": ["SYS_ADMIN", "NET_ADMIN", "NET_RAW"],
+        "Binds": ["/usr/blueos/extensions/tailscale:/var/lib/tailscale"],
+        "Devices": [
+          {
+            "PathOnHost": "/dev/net/tun",
+            "PathInContainer": "/dev/net/tun",
+            "CgroupPermissions": "rwm"
+          }
+        ]
+      }
+    }
+    ```
+
+1. Click **Create** and wait for the image to download (the vehicle needs internet access for this step). Once it's running, **Tailscale Manager** appears in the BlueOS sidebar
+
+The image is published for Raspberry Pi 3/4/5 (32- and 64-bit) and x86_64 BlueOS systems.
+
 ## Initial Setup
 
-1. Install the Tailscale extension on your vehicle
+1. Install the Tailscale extension on your vehicle (see [Installation](#installation))
 1. [Download Tailscale](https://tailscale.com/download) on the device(s) you want to connect with, and log in
     - create an account if you haven't used Tailscale before
 1. Open the Tailscale extension page in BlueOS and click **Log in**
