@@ -11,6 +11,7 @@
 1. Once the status shows `Running`, the vehicle's Tailscale IP (`100.x.y.z`) and name are shown, along with the other devices on your tailnet
 1. You should now be able to access the BlueOS web interface through the Tailscale connection
     - Use the **vehicle**'s Tailscale IP (e.g. `http://100.x.y.z`), or its MagicDNS name (e.g. `http://blueos`) if MagicDNS is enabled on your tailnet
+    - SSH works the same as on the local network: `ssh pi@<vehicle-tailscale-ip>`
     - Connecting through Tailscale requires both ends of the connection to be logged in to the same tailnet and connected to the internet
 1. Configure the desired endpoints (for MAVLink telemetry, video streams, serial, etc) to point to the intended recipient
     - Setting up a video stream requires setting up a stream endpoint for it in the [Video Streams](https://blueos.cloud/docs/blueos/1.1/advanced-usage/#video-streams) page
@@ -26,7 +27,6 @@ By default Tailscale requires devices to re-authenticate periodically. For a veh
 ## Settings
 
 - **Hostname on tailnet**: the vehicle's name in Tailscale and MagicDNS. Defaults to the BlueOS hostname.
-- **Enable Tailscale SSH**: lets tailnet users SSH in using Tailscale identities and ACLs. Note this opens a shell *inside the extension container*. Regular SSH to the vehicle (`ssh pi@<tailscale-ip>`) already works over Tailscale without this option.
 - **Subnet routes**: advertise local networks (e.g. the tether network `192.168.2.0/24`) so tailnet devices can reach equipment behind the vehicle, such as IP cameras or sonars. After saving, approve the routes for the vehicle in the [Machines page](https://login.tailscale.com/admin/machines) (`...` → **Edit route settings**). Linux clients must also run `tailscale up --accept-routes`.
 
 ## General Usage

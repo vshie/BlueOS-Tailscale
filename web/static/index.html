@@ -135,13 +135,6 @@
             <input type="text" v-model="settings.hostname" placeholder="Default: system hostname">
           </label>
 
-          <label>
-            <input type="checkbox" v-model="settings.ssh">
-            Enable Tailscale SSH
-          </label>
-          <p class="muted">Tailscale SSH opens a shell in the extension container. Regular SSH to the vehicle
-            (e.g. <code>ssh pi@&lt;tailscale-ip&gt;</code>) works without this.</p>
-
           <fieldset>
             <legend>Subnet routes</legend>
             <p class="muted">Advertise local networks so tailnet devices can reach equipment behind the vehicle.
@@ -185,7 +178,7 @@
           error: null,
           busy: false,
           authKey: '',
-          settings: { hostname: '', advertise_routes: [], ssh: false },
+          settings: { hostname: '', advertise_routes: [] },
           subnets: [],
           newRoute: '',
           settingsError: null,

@@ -55,10 +55,10 @@ LABEL type="other"
 LABEL tags='[\
         "communication"\
     ]'
-LABEL readme='https://raw.githubusercontent.com/BlueOS-community/BlueOS-Tailscale/{tag}/README.md'
+LABEL readme='https://raw.githubusercontent.com/vshie/BlueOS-Tailscale/{tag}/README.md'
 LABEL links='{\
-        "website": "https://github.com/BlueOS-community/BlueOS-Tailscale",\
-        "support": "https://github.com/BlueOS-community/BlueOS-Tailscale/issues"\
+        "website": "https://github.com/vshie/BlueOS-Tailscale",\
+        "support": "https://github.com/vshie/BlueOS-Tailscale/issues"\
     }'
 
 LABEL requirements="core >= 1.1"

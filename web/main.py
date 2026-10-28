@@ -23,7 +23,6 @@ IGNORED_INTERFACE_PREFIXES = ("lo", "docker", "veth", "br-", "tailscale")
 class Settings(BaseModel):
     hostname: Optional[str] = None
     advertise_routes: List[str] = []
-    ssh: bool = False
 
     @validator("hostname")
     def validate_hostname(cls, value: Optional[str]) -> Optional[str]:
@@ -109,7 +108,6 @@ def preference_flags(settings: Settings) -> List[str]:
     return [
         f"--hostname={settings.hostname or ''}",
         f"--advertise-routes={','.join(settings.advertise_routes)}",
-        f"--ssh={str(settings.ssh).lower()}",
     ]
 
 

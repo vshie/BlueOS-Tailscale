@@ -4,6 +4,6 @@
     "icon":"mdi-vpn",
     "company":"Blue Robotics",
     "version":"1.104.4",
-    "webpage":"https://github.com/BlueOS-community/BlueOS-Tailscale",
+    "webpage":"https://github.com/vshie/BlueOS-Tailscale",
     "api":"/v1.0/docs"
 }
