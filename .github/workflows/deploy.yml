@@ -11,6 +11,9 @@ on:
 jobs:
   deploy-docker-image:
     runs-on: ubuntu-latest
+    # needed to attach the image tarballs to a GitHub release on tag pushes
+    permissions:
+      contents: write
     steps:
       - name: Deploy BlueOS Extension
         uses: BlueOS-community/Deploy-BlueOS-Extension@v1
