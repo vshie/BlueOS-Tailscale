@@ -1,0 +1,9 @@
+{
+    "name":"Tailscale Manager",
+    "description":"Manager for Tailscale networks",
+    "icon":"mdi-vpn",
+    "company":"Blue Robotics",
+    "version":"1.104.4",
+    "webpage":"https://github.com/BlueOS-community/BlueOS-Tailscale",
+    "api":"/v1.0/docs"
+}

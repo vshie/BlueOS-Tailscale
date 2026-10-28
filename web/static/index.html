@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TailscaleManager</title>
+  <script src="vue.js"></script>
+  <script src="axios.min.js"></script>
+  <link rel="stylesheet" href="pico.min.css">
+  <style>
+    .status-badge { display:inline-block; padding:0.25rem 0.75rem; border-radius:1rem; font-size:0.875rem; }
+    .status-online { background:#d1fae5; color:#065f46; }
+    .status-offline { background:#fee2e2; color:#991b1b; }
+    .card { padding:1rem; margin-bottom:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .compact-table { width:100%; font-size:0.875rem; }
+    .compact-table th { background:rgb(39, 41, 44); padding:0.5rem; }
+    .compact-table td { padding:0.5rem; border-bottom:1px solid #e5e7eb; }
+    .compact-table tr:hover { background:#3b3b3b; }
+    .btn-sm { padding:0.25rem 0.5rem; font-size:0.875rem; }
+    .btn-danger { background:#ef4444; color:white; }
+    .btn-danger:hover { background:#dc2626; }
+    .grid-2 { display:grid; grid-template-columns:1fr auto; gap:0.5rem; align-items:center; }
+    .tabs { display:flex; gap:1rem; margin-bottom:1rem; }
+    .tab { cursor:pointer; padding:0.5rem 1rem; border-radius:0.25rem; }
+    .tab.active { background: rgb(39, 41, 44); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .error { color:#dc2626; font-size:0.875rem; }
+    .muted { opacity:0.7; font-size:0.875rem; }
+    .dot { display:inline-block; width:0.5rem; height:0.5rem; border-radius:50%; margin-right:0.4rem; }
+    .dot.on { background:#10b981; }
+    .dot.off { background:#6b7280; }
+    .auth-url { word-break:break-all; font-size:1.1rem; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="container">
+      <div class="grid-2">
+        <h2>Tailscale Manager</h2>
+        <span :class="['status-badge', state === 'Running' ? 'status-online' : 'status-offline']">
+          {{ state }}
+        </span>
+      </div>
+
+      <div class="tabs">
+        <div
+          v-for="tab in ['Connection', 'Settings']"
+          :key="tab"
+          @click="activeTab = tab"
+          :class="['tab', activeTab === tab ? 'active' : '']"
+        >
+          {{ tab }}
+        </div>
+      </div>
+
+      <div :class="['panel', activeTab === 'Connection' ? 'active' : '']">
+        <div class="error" v-if="error">{{ error }}</div>
+
+        <!-- Logged out -->
+        <div class="card" v-if="state !== 'Running' && state !== '-'">
+          <template v-if="status.AuthURL">
+            <p>Open this link on any device and approve this vehicle to join your tailnet:</p>
+            <p><a class="auth-url" :href="status.AuthURL" target="_blank" rel="noopener">{{ status.AuthURL }}</a></p>
+            <p class="muted">Waiting for approval…</p>
+          </template>
+          <template v-else>
+            <p>This vehicle is not connected to a tailnet.</p>
+            <button class="btn-sm" @click.prevent="login()" :disabled="busy || status.LoginInProgress">
+              {{ status.LoginInProgress ? 'Requesting login link…' : 'Log in' }}
+            </button>
+          </template>
+
+          <details style="margin-top:1rem">
+            <summary>Use an auth key instead</summary>
+            <p class="muted">Generate a key in the Tailscale admin console under Settings → Keys.</p>
+            <form class="grid-2">
+              <input type="password" placeholder="tskey-auth-…" v-model="authKey" autocomplete="off">
+              <button class="btn-sm" @click.prevent="loginWithKey()" :disabled="busy || !authKey">Connect</button>
+            </form>
+          </details>
+        </div>
+
+        <!-- Logged in -->
+        <div class="card" v-if="state === 'Running' && status.Self">
+          <div class="grid-2">
+            <div>
+              <strong>{{ status.Self.HostName }}</strong>
+              <div class="muted">{{ trimDns(status.Self.DNSName) }}</div>
+              <div><small>{{ status.Self.TailscaleIPs.join(', ') }}</small></div>
+            </div>
+            <button class="btn-sm btn-danger" @click.prevent="logout()" :disabled="busy">Log out</button>
+          </div>
+        </div>
+
+        <div class="card" v-if="status.Health && status.Health.length">
+          <strong>Health warnings</strong>
+          <ul><li v-for="h in status.Health" :key="h" class="muted">{{ h }}</li></ul>
+        </div>
+
+        <div class="card" v-if="state === 'Running'">
+          <strong>Peers</strong>
+          <table class="compact-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>IPs</th>
+                <th>OS</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :key="peer.DNSName" v-for="peer in status.Peers">
+                <td>
+                  {{ peer.HostName }}
+                  <div class="muted">{{ trimDns(peer.DNSName) }}</div>
+                </td>
+                <td><small>{{ peer.TailscaleIPs.join(', ') }}</small></td>
+                <td>{{ peer.OS }}</td>
+                <td>
+                  <span :class="['dot', peer.Online ? 'on' : 'off']"></span>
+                  {{ peer.Online ? 'Online' : lastSeen(peer.LastSeen) }}
+                </td>
+              </tr>
+              <tr v-if="!status.Peers.length"><td colspan="4" class="muted">No other devices on this tailnet yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div :class="['panel', activeTab === 'Settings' ? 'active' : '']">
+        <div class="card">
+          <label>
+            Hostname on tailnet
+            <input type="text" v-model="settings.hostname" placeholder="Default: system hostname">
+          </label>
+
+          <label>
+            <input type="checkbox" v-model="settings.ssh">
+            Enable Tailscale SSH
+          </label>
+          <p class="muted">Tailscale SSH opens a shell in the extension container. Regular SSH to the vehicle
+            (e.g. <code>ssh pi@&lt;tailscale-ip&gt;</code>) works without this.</p>
+
+          <fieldset>
+            <legend>Subnet routes</legend>
+            <p class="muted">Advertise local networks so tailnet devices can reach equipment behind the vehicle.
+              Routes must be approved in the Tailscale admin console.</p>
+            <label v-for="s in subnets" :key="s.subnet">
+              <input type="checkbox" :value="s.subnet" v-model="settings.advertise_routes">
+              {{ s.subnet }} <span class="muted">({{ s.interface }})</span>
+            </label>
+            <label v-for="r in customRoutes" :key="r">
+              <input type="checkbox" :value="r" v-model="settings.advertise_routes">
+              {{ r }} <span class="muted">(custom)</span>
+            </label>
+            <form class="grid-2">
+              <input type="text" placeholder="Custom CIDR, e.g. 10.0.0.0/24" v-model="newRoute">
+              <button class="btn-sm" @click.prevent="addRoute()" :disabled="!newRoute">Add</button>
+            </form>
+          </fieldset>
+
+          <div class="error" v-if="settingsError">{{ settingsError }}</div>
+          <button class="btn-sm" style="margin-top:0.5rem" @click.prevent="saveSettings()" :disabled="busy">Save Settings</button>
+          <span class="muted" v-if="settingsSaved" style="margin-left:0.5rem">Saved</span>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    function errorMessage(error) {
+      const detail = error.response?.data?.detail;
+      if (Array.isArray(detail)) return detail.map(d => d.msg).join('; ');
+      return detail || error.message;
+    }
+
+    var app = new Vue({
+      el: "#app",
+      data() {
+        return {
+          status: { Peers: [], Health: [] },
+          state: '-',
+          error: null,
+          busy: false,
+          authKey: '',
+          settings: { hostname: '', advertise_routes: [], ssh: false },
+          subnets: [],
+          newRoute: '',
+          settingsError: null,
+          settingsSaved: false,
+          activeTab: 'Connection',
+          timer: null,
+        };
+      },
+      computed: {
+        customRoutes() {
+          const detected = this.subnets.map(s => s.subnet);
+          return this.settings.advertise_routes.filter(r => !detected.includes(r));
+        },
+      },
+      methods: {
+        checkStatus() {
+          axios.get('/v1.0/status').then(result => {
+            this.status = result.data;
+            this.state = result.data.BackendState || 'Unknown';
+            this.error = null;
+          }).catch(error => {
+            this.state = 'Unavailable';
+            this.error = errorMessage(error);
+          }).finally(() => this.schedule());
+        },
+        schedule() {
+          clearTimeout(this.timer);
+          const waiting = this.state !== 'Running' && (this.status.LoginInProgress || this.status.AuthURL);
+          this.timer = setTimeout(this.checkStatus, waiting ? 2000 : 5000);
+        },
+        login() {
+          this.busy = true;
+          axios.post('/v1.0/login', {}).then(() => {
+            this.status.LoginInProgress = true;
+            this.checkStatus();
+          }).catch(error => {
+            this.error = errorMessage(error);
+          }).finally(() => this.busy = false);
+        },
+        loginWithKey() {
+          this.busy = true;
+          axios.post('/v1.0/login', { auth_key: this.authKey }).then(() => {
+            this.authKey = '';
+            this.checkStatus();
+          }).catch(error => {
+            this.error = errorMessage(error);
+          }).finally(() => this.busy = false);
+        },
+        logout() {
+          if (!confirm('Log this vehicle out of Tailscale?')) return;
+          this.busy = true;
+          axios.post('/v1.0/logout').then(() => this.checkStatus())
+            .catch(error => { this.error = errorMessage(error); })
+            .finally(() => this.busy = false);
+        },
+        loadSettings() {
+          axios.get('/v1.0/settings').then(result => {
+            this.settings = Object.assign({ hostname: '' }, result.data);
+            this.settings.hostname = this.settings.hostname || '';
+          }).catch(error => console.error('Error loading settings:', error));
+          axios.get('/v1.0/subnets').then(result => {
+            this.subnets = result.data;
+          }).catch(error => console.error('Error loading subnets:', error));
+        },
+        addRoute() {
+          const route = this.newRoute.trim();
+          if (route && !this.settings.advertise_routes.includes(route)) {
+            this.settings.advertise_routes.push(route);
+          }
+          this.newRoute = '';
+        },
+        saveSettings() {
+          this.busy = true;
+          this.settingsError = null;
+          this.settingsSaved = false;
+          axios.post('/v1.0/settings', this.settings).then(result => {
+            this.settings = Object.assign({}, result.data, { hostname: result.data.hostname || '' });
+            this.settingsSaved = true;
+            this.checkStatus();
+          }).catch(error => {
+            this.settingsError = errorMessage(error);
+          }).finally(() => this.busy = false);
+        },
+        trimDns(name) {
+          return (name || '').replace(/\.$/, '');
+        },
+        lastSeen(timestamp) {
+          if (!timestamp || timestamp.startsWith('0001')) return 'Offline';
+          return 'Last seen ' + new Date(timestamp).toLocaleString();
+        },
+      },
+      mounted() {
+        this.checkStatus();
+        this.loadSettings();
+      }
+    });
+  </script>
+</body>
+</html>
