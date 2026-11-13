@@ -3,7 +3,7 @@
 FROM python:3.11-slim-bookworm AS stage
 
 ARG PACKAGE_BASEURL=https://pkgs.tailscale.com/stable
-ARG TAILSCALE_VERSION=1.104.4
+ARG TAILSCALE_VERSION=1.104.7
 
 COPY download.sh /download.sh
 RUN chmod +x /download.sh && VERSION=${TAILSCALE_VERSION} /download.sh
@@ -22,7 +22,7 @@ COPY web /web
 RUN cd web && pip install .
 
 
-LABEL version="1.104.4"
+LABEL version="1.104.7"
 LABEL permissions='\
 {\
     "NetworkMode":"host"\

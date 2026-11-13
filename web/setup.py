@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
     name="TailscaleManager",
-    version="1.104.4",
+    version="1.104.7",
     description="Allow the usage of simple commands from the frontend.",
     license="MIT",
     install_requires=[
